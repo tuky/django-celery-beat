@@ -31,7 +31,7 @@ PERIOD_CHOICES = (
 try:
     SOLAR_SCHEDULES = [(x, _(x)) for x in schedules.solar._all_events]
 except AttributeError:
-   SOLAR_SCHEUDLES = []
+    SOLAR_SCHEUDLES = []
 
 
 def cronexp(field):
