@@ -30,7 +30,7 @@ PERIOD_CHOICES = (
 
 try:
     SOLAR_SCHEDULES = [(x, _(x)) for x in schedules.solar._all_events]
-except ImportError:
+except AttributeError:
    SOLAR_SCHEUDLES = []
 
 
