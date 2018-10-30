@@ -131,6 +131,49 @@ class test_ModelEntry(SchedulerCase):
         assert e3.last_run_at > e2.last_run_at
         assert e3.total_run_count == 1
 
+    def test_task_with_start_time(self):
+        interval = 10
+        right_now = self.app.now()
+        one_interval_ago = right_now - timedelta(seconds=interval)
+        m = self.create_model_interval(schedule(timedelta(seconds=interval)),
+                                       start_time=right_now,
+                                       last_run_at=one_interval_ago)
+        e = self.Entry(m, app=self.app)
+        isdue, delay = e.is_due()
+        assert isdue
+        assert delay == interval
+
+        tomorrow = right_now + timedelta(days=1)
+        m2 = self.create_model_interval(schedule(timedelta(seconds=interval)),
+                                        start_time=tomorrow,
+                                        last_run_at=one_interval_ago)
+        e2 = self.Entry(m2, app=self.app)
+        isdue, delay = e2.is_due()
+        assert not isdue
+        assert delay == interval
+
+    def test_one_off_task(self):
+        interval = 10
+        right_now = self.app.now()
+        one_interval_ago = right_now - timedelta(seconds=interval)
+        m = self.create_model_interval(schedule(timedelta(seconds=interval)),
+                                       one_off=True,
+                                       last_run_at=one_interval_ago,
+                                       total_run_count=0)
+        e = self.Entry(m, app=self.app)
+        isdue, delay = e.is_due()
+        assert isdue
+        assert delay == interval
+
+        m2 = self.create_model_interval(schedule(timedelta(seconds=interval)),
+                                        one_off=True,
+                                        last_run_at=one_interval_ago,
+                                        total_run_count=1)
+        e2 = self.Entry(m2, app=self.app)
+        isdue, delay = e2.is_due()
+        assert not isdue
+        assert delay is None
+
 
 @pytest.mark.django_db()
 class test_DatabaseSchedulerFromAppConf(SchedulerCase):
@@ -357,29 +400,51 @@ class test_DatabaseScheduler(SchedulerCase):
         with pytest.raises(RuntimeError):
             self.s.sync()
 
+    def test_update_scheduler_heap_invalidation(self, monkeypatch):
+        # mock "schedule_changed" to always trigger update for
+        # all calls to schedule, as a change may occur at any moment
+        monkeypatch.setattr(self.s, 'schedule_changed', lambda: True)
+        self.s.tick()
+
+    def test_heap_size_is_constant(self, monkeypatch):
+        # heap size is constant unless the schedule changes
+        monkeypatch.setattr(self.s, 'schedule_changed', lambda: True)
+        expected_heap_size = len(self.s.schedule.values())
+        self.s.tick()
+        assert len(self.s._heap) == expected_heap_size
+        self.s.tick()
+        assert len(self.s._heap) == expected_heap_size
+
+    def test_scheduler_schedules_equality_on_change(self, monkeypatch):
+        monkeypatch.setattr(self.s, 'schedule_changed', lambda: False)
+        assert self.s.schedules_equal(self.s.schedule, self.s.schedule)
+
+        monkeypatch.setattr(self.s, 'schedule_changed', lambda: True)
+        assert not self.s.schedules_equal(self.s.schedule, self.s.schedule)
+
 
 @pytest.mark.django_db()
 class test_models(SchedulerCase):
 
     def test_IntervalSchedule_unicode(self):
-        assert (text_t(IntervalSchedule(every=1, period='seconds')) ==
-                'every second')
-        assert (text_t(IntervalSchedule(every=10, period='seconds')) ==
-                'every 10 seconds')
+        assert (text_t(IntervalSchedule(every=1, period='seconds'))
+                == 'every second')
+        assert (text_t(IntervalSchedule(every=10, period='seconds'))
+                == 'every 10 seconds')
 
     def test_CrontabSchedule_unicode(self):
         assert text_t(CrontabSchedule(
             minute=3,
             hour=3,
             day_of_week=None,
-        )) == '3 3 * * * (m/h/d/dM/MY)'
+        )) == '3 3 * * * (m/h/d/dM/MY) UTC'
         assert text_t(CrontabSchedule(
             minute=3,
             hour=3,
             day_of_week='tue',
             day_of_month='*/2',
             month_of_year='4,6',
-        )) == '3 3 tue */2 4,6 (m/h/d/dM/MY)'
+        )) == '3 3 tue */2 4,6 (m/h/d/dM/MY) UTC'
 
     def test_PeriodicTask_unicode_interval(self):
         p = self.create_model_interval(schedule(timedelta(seconds=10)))
@@ -390,7 +455,9 @@ class test_models(SchedulerCase):
             hour='4, 5',
             day_of_week='4, 5',
         ))
-        assert text_t(p) == '{0}: * 4,5 4,5 * * (m/h/d/dM/MY)'.format(p.name)
+        assert text_t(p) == """{0}: * 4,5 4,5 * * (m/h/d/dM/MY) UTC""".format(
+            p.name
+        )
 
     def test_PeriodicTask_unicode_solar(self):
         p = self.create_model_solar(
