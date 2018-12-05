@@ -196,7 +196,9 @@ class CrontabSchedule(models.Model):
         validators=[validators.month_of_year_validator],
     )
 
-    timezone = timezone_field.TimeZoneField(default='UTC')
+    timezone = timezone_field.TimeZoneField(
+        default=getattr(settings, 'TIME_ZONE', 'UTC')
+    )
 
     class Meta:
         """Table information."""
