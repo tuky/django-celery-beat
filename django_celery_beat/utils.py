@@ -2,6 +2,7 @@
 # -- XXX This module must not use translation as that causes
 # -- a recursive loader import!
 from __future__ import absolute_import, unicode_literals
+import datetime
 
 from django.conf import settings
 from django.utils import timezone
@@ -27,7 +28,10 @@ def make_aware(value):
 def now():
     """Return the current date and time."""
     if getattr(settings, 'USE_TZ', False):
-        return now_localtime(timezone.now())
+        _now = now_localtime(timezone.now())
+        if not getattr(settings, 'DJANGO_CELERY_BEAT_TZ_AWARE', True):
+            _now = datetime.datetime.now()
+        return _now
     else:
         return timezone.now()
 
