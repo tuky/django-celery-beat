@@ -134,9 +134,13 @@ class IntervalSchedule(models.Model):
 
     @property
     def schedule(self):
+        _now = now()
+        if settings.DJANGO_CELERY_BEAT_TZ_AWARE:
+            _now = make_aware(_now)
+
         return schedules.schedule(
             timedelta(**{self.period: self.every}),
-            nowfun=lambda: make_aware(now())
+            nowfun=lambda: _now
         )
 
     @classmethod
