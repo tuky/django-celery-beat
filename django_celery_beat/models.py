@@ -5,7 +5,7 @@ from datetime import timedelta
 
 import timezone_field
 from celery import schedules
-from celery.utils import remaining
+from celery.utils.time import remaining
 from celery.five import python_2_unicode_compatible
 from django.conf import settings
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
