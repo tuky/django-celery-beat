@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import timezone_field
 from celery import schedules
+from celery.utils import remaining
 from celery.five import python_2_unicode_compatible
 from django.conf import settings
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
@@ -111,12 +112,17 @@ class SolarSchedule(models.Model):
 class SPSchedule(schedules.schedule):
 
     def is_due(self, last_run_at):
-        last_run_at = self.maybe_make_aware(last_run_at)
         rem_delta = self.remaining_estimate(last_run_at)
         remaining_s = max(rem_delta.total_seconds(), 0)
         if remaining_s == 0:
             return schedules.schedstate(is_due=True, next=self.seconds)
         return schedules.schedstate(is_due=False, next=remaining_s)
+
+    def remaining_estimate(self, last_run_at):
+        return remaining(
+            last_run_at, self.run_every,
+            self.now(), self.relative,
+        )
 
 
 @python_2_unicode_compatible
