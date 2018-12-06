@@ -93,7 +93,7 @@ class ModelEntry(ScheduleEntry):
             model.last_run_at = self._default_now()
 
 
-        last_run_at = make_aware(last_run_at)
+        last_run_at = make_aware(model.last_run_at)
 
         self.last_run_at = last_run_at
 
