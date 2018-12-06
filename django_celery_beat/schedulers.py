@@ -90,7 +90,8 @@ class ModelEntry(ScheduleEntry):
         self.model = model
 
         if not model.last_run_at:
-            model.last_run_at = self._default_now()
+            # model.last_run_at = self._default_now()
+            model.last_run_at = datetime.datetime.now()
 
         last_run_at = model.last_run_at
 

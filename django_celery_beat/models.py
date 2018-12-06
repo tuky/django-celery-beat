@@ -108,6 +108,17 @@ class SolarSchedule(models.Model):
         )
 
 
+class SPSchedule(schedules.schedule):
+
+    def is_due(self, last_run_at):
+        last_run_at = self.maybe_make_aware(last_run_at)
+        rem_delta = self.remaining_estimate(last_run_at)
+        remaining_s = max(rem_delta.total_seconds(), 0)
+        if remaining_s == 0:
+            return schedules.schedstate(is_due=True, next=self.seconds)
+        return schedules.schedstate(is_due=False, next=remaining_s)
+
+
 @python_2_unicode_compatible
 class IntervalSchedule(models.Model):
     """Schedule executing every n seconds."""
@@ -134,13 +145,13 @@ class IntervalSchedule(models.Model):
 
     @property
     def schedule(self):
-        from celery.contrib import rdb
-        rdb.set_trace()
+        # from celery.contrib import rdb
+        # rdb.set_trace()
         _now = now()
         if settings.DJANGO_CELERY_BEAT_TZ_AWARE:
             _now = make_aware(_now)
 
-        return schedules.schedule(
+        return SPSchedule(
             timedelta(**{self.period: self.every}),
             nowfun=lambda: _now
         )
