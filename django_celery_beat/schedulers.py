@@ -25,7 +25,7 @@ from .models import (
     CrontabSchedule, IntervalSchedule,
     SolarSchedule,
 )
-from .utils import make_aware
+from .utils import make_aware, is_aware
 
 try:
     from celery.utils.time import is_naive
@@ -92,10 +92,8 @@ class ModelEntry(ScheduleEntry):
         if not model.last_run_at:
             model.last_run_at = self._default_now()
 
-        last_run_at = model.last_run_at
 
-        if settings.DJANGO_CELERY_BEAT_TZ_AWARE:
-            last_run_at = make_aware(last_run_at)
+        last_run_at = make_aware(last_run_at)
 
         self.last_run_at = last_run_at
 
@@ -130,7 +128,8 @@ class ModelEntry(ScheduleEntry):
         # The PyTZ datetime must be localised for the Django-Celery-Beat
         # scheduler to work. Keep in mind that timezone arithmatic
         # with a localized timezone may be inaccurate.
-        if settings.DJANGO_CELERY_BEAT_TZ_AWARE:
+
+        if is_aware(now):
             now = now.tzinfo.localize(now.replace(tzinfo=None))
         return now
 
@@ -148,7 +147,6 @@ class ModelEntry(ScheduleEntry):
         for field in self.save_fields:
             setattr(obj, field, getattr(self.model, field))
 
-        if not settings.DJANGO_CELERY_BEAT_TZ_AWARE:
             obj.last_run_at = datetime.datetime.now()
 
         obj.save()

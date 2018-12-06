@@ -21,6 +21,11 @@ def make_aware(value):
         # then convert to the Django configured timezone.
         default_tz = timezone.get_default_timezone()
         value = timezone.localtime(value, default_tz)
+    if not getattr(settings,'CELERY_ENABLE_UTC', True):
+        if timezone.is_naive(value):
+            value = value
+        else:
+            value = timezone.make_naive(value)
     return value
 
 
