@@ -153,11 +153,9 @@ class IntervalSchedule(models.Model):
     def schedule(self):
         # from celery.contrib import rdb
         # rdb.set_trace()
-        _now = now()
-        if settings.DJANGO_CELERY_BEAT_TZ_AWARE:
-            _now = make_aware(_now)
+        _now = make_aware(now())
 
-        return SPSchedule(
+        return schedules.schedule(
             timedelta(**{self.period: self.every}),
             nowfun=lambda: _now
         )
