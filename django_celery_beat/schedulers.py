@@ -90,8 +90,7 @@ class ModelEntry(ScheduleEntry):
         self.model = model
 
         if not model.last_run_at:
-            # model.last_run_at = self._default_now()
-            model.last_run_at = datetime.datetime.now()
+            model.last_run_at = self._default_now()
 
         self.last_run_at = make_aware(model.last_run_at)
 
@@ -126,8 +125,7 @@ class ModelEntry(ScheduleEntry):
         # The PyTZ datetime must be localised for the Django-Celery-Beat
         # scheduler to work. Keep in mind that timezone arithmatic
         # with a localized timezone may be inaccurate.
-        now = now.tzinfo.localize(now.replace(tzinfo=None))
-        return now
+        return now.tzinfo.localize(now.replace(tzinfo=None))
 
     def __next__(self):
         self.model.last_run_at = self.app.now()
